@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk & Daftar Host - QuizVibe Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="display:flex; flex-direction:column; min-height:100vh;">
+
+  <!-- Simple Navigation Bar -->
+  <nav class="navbar">
+    <a href="/" class="brand-logo">
+      <span>⚡</span>
+      <span>QuizVibe Pro</span>
+      <span class="brand-badge">Host Portal</span>
+    </a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Beranda</a>
+      <a href="/player.html" class="nav-link">Gabung via PIN</a>
+    </div>
+  </nav>
+
+  <!-- Auth Card Container -->
+  <main style="flex-grow:1; display:flex; align-items:center; justify-content:center; padding:2rem 1.5rem;">
+    <div class="glass" style="max-width:440px; width:100%; padding:2.5rem; text-align:center;">
+      
+      <div style="font-size:2.8rem; margin-bottom:0.5rem;">👑</div>
+      <h2 id="auth-title" style="font-size:1.8rem; font-weight:800; margin-bottom:0.25rem;">Masuk ke Portal Host</h2>
+      <p id="auth-subtitle" class="text-muted" style="font-size:0.9rem; margin-bottom:1.5rem;">Kelola kuis, sesi event, dan laporan hasil peserta</p>
+
+      <!-- Toggle Tabs -->
+      <div style="display:flex; background:rgba(255,255,255,0.06); border-radius:var(--radius-md); padding:0.25rem; margin-bottom:1.5rem;">
+        <button type="button" id="tab-login" class="btn w-full btn-primary" style="padding:0.5rem; font-size:0.9rem;" onclick="switchTab('login')">
+          Masuk (Login)
+        </button>
+        <button type="button" id="tab-register" class="btn w-full btn-outline" style="padding:0.5rem; font-size:0.9rem; border:none;" onclick="switchTab('register')">
+          Daftar Baru
+        </button>
+      </div>
+
+      <!-- Error Notification Box -->
+      <div id="auth-alert" style="display:none; padding:0.75rem 1rem; border-radius:8px; font-size:0.9rem; margin-bottom:1rem; text-align:left;"></div>
+
+      <!-- Auth Form -->
+      <form onsubmit="handleAuthSubmit(event)">
+        <!-- Name (Register Only) -->
+        <div id="field-name" style="display:none; text-align:left; margin-bottom:1rem;">
+          <label style="font-weight:700; font-size:0.85rem; color:#a5b4fc; display:block; margin-bottom:0.3rem;">Nama Lengkap / Organizer:</label>
+          <input type="text" id="auth-name" class="pin-input" placeholder="contoh: Ahmad Organizer" style="font-size:1rem; letter-spacing:0; padding:0.7rem; margin:0;" />
+        </div>
+
+        <!-- Organization (Register Only) -->
+        <div id="field-org" style="display:none; text-align:left; margin-bottom:1rem;">
+          <label style="font-weight:700; font-size:0.85rem; color:#a5b4fc; display:block; margin-bottom:0.3rem;">Nama Perusahaan / Komunitas (Opsional):</label>
+          <input type="text" id="auth-org" class="pin-input" placeholder="contoh: PT Event Nusantara" style="font-size:1rem; letter-spacing:0; padding:0.7rem; margin:0;" />
+        </div>
+
+        <!-- Email -->
+        <div style="text-align:left; margin-bottom:1rem;">
+          <label style="font-weight:700; font-size:0.85rem; color:#a5b4fc; display:block; margin-bottom:0.3rem;">Alamat Email:</label>
+          <input type="email" id="auth-email" class="pin-input" placeholder="nama@email.com" required style="font-size:1rem; letter-spacing:0; padding:0.7rem; margin:0;" />
+        </div>
+
+        <!-- Password -->
+        <div style="text-align:left; margin-bottom:1.5rem;">
+          <label style="font-weight:700; font-size:0.85rem; color:#a5b4fc; display:block; margin-bottom:0.3rem;">Kata Sandi (Password):</label>
+          <input type="password" id="auth-password" class="pin-input" placeholder="Minimal 6 karakter" required style="font-size:1rem; letter-spacing:0; padding:0.7rem; margin:0;" />
+        </div>
+
+        <button type="submit" id="btn-submit-auth" class="btn btn-accent btn-lg w-full">
+          Masuk ke Dashboard 🚀
+        </button>
+      </form>
+
+      <!-- Quick Demo Account Hint -->
+      <div id="demo-hint" style="margin-top:1.5rem; padding:0.75rem; background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.15); border-radius:8px; font-size:0.85rem; color:#94a3b8; text-align:left;">
+        💡 <strong>Akun Demo Host:</strong><br>
+        Email: <code style="color:#38bdf8;">host@quizvibe.id</code><br>
+        Password: <code style="color:#38bdf8;">admin123</code>
+        <div style="margin-top:0.4rem;">
+          <button type="button" class="btn btn-outline" style="padding:0.2rem 0.5rem; font-size:0.75rem;" onclick="fillDemo()">Isi Akun Demo</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    let currentMode = 'login';
+
+    // Auto-redirect if already logged in
+    const existingToken = localStorage.getItem('quizvibe_token');
+    if (existingToken) {
+      fetch(`/api/auth/me?token=${encodeURIComponent(existingToken)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            window.location.href = '/dashboard.html';
+          }
+        }).catch(() => {});
+    }
+
+    function switchTab(mode) {
+      currentMode = mode;
+      const isLogin = mode === 'login';
+      document.getElementById('tab-login').className = isLogin ? 'btn w-full btn-primary' : 'btn w-full btn-outline';
+      document.getElementById('tab-register').className = !isLogin ? 'btn w-full btn-primary' : 'btn w-full btn-outline';
+      document.getElementById('tab-register').style.border = 'none';
+
+      document.getElementById('auth-title').innerText = isLogin ? 'Masuk ke Portal Host' : 'Daftar Akun Host Baru';
+      document.getElementById('auth-subtitle').innerText = isLogin ? 'Kelola kuis, sesi event, dan laporan hasil peserta' : 'Mulai adakan kuis & presentasi interaktif untuk audiens Anda';
+      document.getElementById('field-name').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('field-org').style.display = isLogin ? 'none' : 'block';
+      document.getElementById('btn-submit-auth').innerText = isLogin ? 'Masuk ke Dashboard 🚀' : 'Daftar Sekarang & Mulai Free 🌟';
+      document.getElementById('demo-hint').style.display = isLogin ? 'block' : 'none';
+      hideAlert();
+    }
+
+    function showAlert(msg, isError = true) {
+      const alertBox = document.getElementById('auth-alert');
+      alertBox.style.display = 'block';
+      alertBox.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)';
+      alertBox.style.border = isError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(16, 185, 129, 0.5)';
+      alertBox.style.color = isError ? '#fca5a5' : '#6ee7b7';
+      alertBox.innerText = msg;
+    }
+
+    function hideAlert() {
+      document.getElementById('auth-alert').style.display = 'none';
+    }
+
+    function fillDemo() {
+      document.getElementById('auth-email').value = 'host@quizvibe.id';
+      document.getElementById('auth-password').value = 'admin123';
+      hideAlert();
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      hideAlert();
+
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value.trim();
+      const name = document.getElementById('auth-name').value.trim();
+      const org = document.getElementById('auth-org').value.trim();
+
+      const btn = document.getElementById('btn-submit-auth');
+      btn.disabled = true;
+      btn.innerText = 'Memproses...';
+
+      try {
+        let url = '';
+        if (currentMode === 'login') {
+          url = `/api/auth/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+        } else {
+          if (!name) {
+            showAlert('Silakan masukkan nama lengkap!');
+            btn.disabled = false;
+            btn.innerText = 'Daftar Sekarang & Mulai Free 🌟';
+            return;
+          }
+          url = `/api/auth/register?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&organization=${encodeURIComponent(org)}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.success && data.user) {
+          localStorage.setItem('quizvibe_token', data.user.token);
+          localStorage.setItem('quizvibe_user', JSON.stringify(data.user));
+          showAlert('Berhasil! Mengalihkan ke dashboard...', false);
+          setTimeout(() => {
+            window.location.href = '/dashboard.html';
+          }, 600);
+        } else {
+          showAlert(data.error || 'Terjadi kesalahan saat memproses autentikasi.');
+        }
+      } catch (err) {
+        showAlert('Gagal menghubungi server. Pastikan koneksi server aktif.');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = currentMode === 'login' ? 'Masuk ke Dashboard 🚀' : 'Daftar Sekarang & Mulai Free 🌟';
+      }
+    }
+  </script>
+</body>
+</html>

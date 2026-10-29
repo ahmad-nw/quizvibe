@@ -35,9 +35,10 @@ class Player:
         }
 
 class GameRoom:
-    def __init__(self, pin, quiz, host_ws):
+    def __init__(self, pin, quiz, host_ws, host_user_id=None):
         self.pin = pin
         self.quiz = quiz
+        self.host_user_id = host_user_id or quiz.get("user_id")
         self.slides = quiz.get("slides", [])
         self.host_ws = host_ws
         self.players = {}  # player_id -> Player
@@ -99,9 +100,9 @@ class GameManager:
             if pin not in self.rooms:
                 return pin
 
-    def create_room(self, quiz, host_ws):
+    def create_room(self, quiz, host_ws, host_user_id=None):
         pin = self.generate_unique_pin()
-        room = GameRoom(pin, quiz, host_ws)
+        room = GameRoom(pin, quiz, host_ws, host_user_id)
         self.rooms[pin] = room
         self.ws_to_host[host_ws] = pin
         return room
@@ -473,8 +474,32 @@ class GameManager:
         top3 = [p.to_dict() for p in sorted_players[:3]]
         all_rankings = [p.to_dict() for p in sorted_players]
 
+        # Automatically persist session report to database
+        import database
+        session_id = f"sess_{room.pin}_{int(time.time())}"
+        try:
+            database.save_game_session({
+                "id": session_id,
+                "user_id": room.host_user_id or room.quiz.get("user_id"),
+                "quiz_id": room.quiz.get("id"),
+                "quiz_title": room.quiz.get("title", "Kuis Selesai"),
+                "pin": room.pin,
+                "player_count": len(sorted_players),
+                "results": {
+                    "podium": top3,
+                    "rankings": all_rankings,
+                    "answers_tally": room.answers_tally,
+                    "word_cloud_tally": room.word_cloud_tally,
+                    "qa_questions": room.qa_questions
+                }
+            })
+            logger.info(f"Game session {session_id} saved successfully to database!")
+        except Exception as e:
+            logger.error(f"Error saving game session: {e}")
+
         msg = {
             "type": "game_over_podium",
+            "session_id": session_id,
             "podium": top3,
             "rankings": all_rankings,
             "total_players": len(sorted_players),

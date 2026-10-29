@@ -150,6 +150,90 @@ async def process_http_request(path, headers):
             body
         )
 
+    # --- AUTHENTICATION APIS ---
+    if req_path == "/api/auth/register":
+        name = query_params.get("name", [""])[0]
+        email = query_params.get("email", [""])[0]
+        password = query_params.get("password", [""])[0]
+        org = query_params.get("organization", [""])[0]
+        if not name or not email or not password:
+            body = json.dumps({"success": False, "error": "Nama, email, dan password wajib diisi!"}).encode("utf-8")
+            return (HTTPStatus.BAD_REQUEST, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+        user, err = database.register_user(name, email, password, org)
+        if err:
+            body = json.dumps({"success": False, "error": err}).encode("utf-8")
+            return (HTTPStatus.BAD_REQUEST, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+        body = json.dumps({"success": True, "user": user}).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+    if req_path == "/api/auth/login":
+        email = query_params.get("email", [""])[0]
+        password = query_params.get("password", [""])[0]
+        if not email or not password:
+            body = json.dumps({"success": False, "error": "Email dan password wajib diisi!"}).encode("utf-8")
+            return (HTTPStatus.BAD_REQUEST, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+        user, err = database.authenticate_user(email, password)
+        if err:
+            body = json.dumps({"success": False, "error": err}).encode("utf-8")
+            return (HTTPStatus.UNAUTHORIZED, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+        body = json.dumps({"success": True, "user": user}).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+    if req_path == "/api/auth/me":
+        token = query_params.get("token", [""])[0]
+        user = database.get_user_by_token(token)
+        if not user:
+            body = json.dumps({"success": False, "error": "Sesi tidak valid / kedaluwarsa"}).encode("utf-8")
+            return (HTTPStatus.UNAUTHORIZED, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+        body = json.dumps({"success": True, "user": user}).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+    if req_path == "/api/auth/logout":
+        token = query_params.get("token", [""])[0]
+        database.delete_user_session(token)
+        body = json.dumps({"success": True}).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+
+    # --- REPORTS & EXPORT APIS ---
+    if req_path == "/api/reports":
+        token = query_params.get("token", [""])[0]
+        user = database.get_user_by_token(token)
+        user_id = user["id"] if user else None
+        sessions = database.get_game_sessions(user_id)
+        body = json.dumps({"success": True, "reports": sessions}, ensure_ascii=False).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json; charset=utf-8"), ("Access-Control-Allow-Origin", "*")], body)
+
+    if req_path == "/api/report":
+        sid = query_params.get("id", [""])[0]
+        detail = database.get_game_session_detail(sid)
+        if not detail:
+            body = json.dumps({"success": False, "error": "Laporan sesi tidak ditemukan"}).encode("utf-8")
+            return (HTTPStatus.NOT_FOUND, [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")], body)
+        body = json.dumps({"success": True, "report": detail}, ensure_ascii=False).encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json; charset=utf-8"), ("Access-Control-Allow-Origin", "*")], body)
+
+    if req_path == "/api/report/export-csv":
+        sid = query_params.get("id", [""])[0]
+        csv_text = database.generate_session_csv(sid)
+        if not csv_text:
+            return (HTTPStatus.NOT_FOUND, [("Content-Type", "text/plain")], b"Report session not found")
+        csv_bytes = csv_text.encode("utf-8-sig")  # UTF-8 BOM for Microsoft Excel compatibility
+        return (
+            HTTPStatus.OK,
+            [
+                ("Content-Type", "text/csv; charset=utf-8"),
+                ("Content-Disposition", f'attachment; filename="Laporan_QuizVibe_{sid}.csv"'),
+                ("Content-Length", str(len(csv_bytes))),
+                ("Access-Control-Allow-Origin", "*")
+            ],
+            csv_bytes
+        )
+
     # Clean Route Mapping with trailing-slash normalization
     clean_path = req_path.rstrip("/")
     if not clean_path:
@@ -159,7 +243,9 @@ async def process_http_request(path, headers):
         "/": "index.html",
         "/host": "host.html",
         "/player": "player.html",
-        "/creator": "creator.html"
+        "/creator": "creator.html",
+        "/dashboard": "dashboard.html",
+        "/auth": "auth.html"
     }
 
     rel_path = file_map.get(clean_path, req_path.lstrip("/"))
@@ -209,13 +295,17 @@ async def handle_ws(websocket):
             # --- HOST ACTIONS ---
             if msg_type == "create_room":
                 quiz_id = data.get("quiz_id")
+                token = data.get("token")
+                user = database.get_user_by_token(token) if token else None
+                user_id = user["id"] if user else None
+
                 quiz = None
                 if quiz_id:
                     quiz = database.get_quiz_by_id(quiz_id)
                 if not quiz:
                     quiz = data.get("quiz_data")
                 if not quiz:
-                    quizzes = database.get_all_quizzes()
+                    quizzes = database.get_all_quizzes(user_id=user_id)
                     quiz = quizzes[0] if quizzes else None
 
                 if not quiz or not quiz.get("slides"):
@@ -225,7 +315,7 @@ async def handle_ws(websocket):
                     }))
                     continue
 
-                room = game_manager.create_room(quiz, websocket)
+                room = game_manager.create_room(quiz, websocket, host_user_id=user_id)
                 await websocket.send(json.dumps({
                     "type": "room_created",
                     "pin": room.pin,
@@ -285,7 +375,10 @@ async def handle_ws(websocket):
 
             # --- QUIZ STUDIO & MANAGEMENT ---
             elif msg_type == "get_quizzes":
-                quizzes = database.get_all_quizzes()
+                token = data.get("token")
+                user = database.get_user_by_token(token) if token else None
+                user_id = user["id"] if user else None
+                quizzes = database.get_all_quizzes(user_id=user_id)
                 await websocket.send(json.dumps({
                     "type": "quizzes_list",
                     "quizzes": quizzes
@@ -301,8 +394,11 @@ async def handle_ws(websocket):
 
             elif msg_type == "save_quiz":
                 quiz_data = data.get("quiz")
+                token = data.get("token")
+                user = database.get_user_by_token(token) if token else None
+                user_id = user["id"] if user else None
                 if quiz_data:
-                    saved_id = database.save_quiz(quiz_data)
+                    saved_id = database.save_quiz(quiz_data, user_id=user_id)
                     await websocket.send(json.dumps({
                         "type": "quiz_saved",
                         "id": saved_id,
@@ -311,8 +407,11 @@ async def handle_ws(websocket):
 
             elif msg_type == "delete_quiz":
                 qid = data.get("id")
+                token = data.get("token")
+                user = database.get_user_by_token(token) if token else None
+                user_id = user["id"] if user else None
                 if qid:
-                    database.delete_quiz(qid)
+                    database.delete_quiz(qid, user_id=user_id)
                     await websocket.send(json.dumps({
                         "type": "quiz_deleted",
                         "id": qid
