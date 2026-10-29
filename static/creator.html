@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Studio - QuizVibe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .studio-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .studio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.5rem;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--panel-border);
+    }
+    .studio-body {
+      display: flex;
+      flex-grow: 1;
+      overflow: hidden;
+    }
+    .slides-sidebar {
+      width: 280px;
+      background: rgba(15, 23, 42, 0.6);
+      border-right: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .slide-thumb-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .slide-thumb-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .slide-thumb-card.active {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.15);
+    }
+    .btn-delete-thumb {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .btn-delete-thumb:hover {
+      color: #ef4444;
+    }
+    .editor-pane {
+      flex-grow: 1;
+      padding: 2rem 3rem;
+      overflow-y: auto;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .library-pane {
+      width: 300px;
+      background: rgba(15, 23, 42, 0.4);
+      border-left: 1px solid var(--panel-border);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body class="studio-container">
+
+  <!-- Top Navigation & Action Bar -->
+  <header class="studio-header">
+    <div style="display:flex; align-items:center; gap:1rem; flex-grow:1; max-width:650px;">
+      <a href="/" class="brand-logo" style="font-size:1.2rem;">
+        <span>⚡</span> <span>QuizVibe Studio</span>
+      </a>
+      <input type="text" id="quiz-icon-input" class="pin-input" value="🎯" style="width:50px; font-size:1.2rem; padding:0.4rem; margin:0;" title="Emoji Ikon Kuis" />
+      <input type="text" id="quiz-title-input" class="pin-input" value="Kuis Kustom Baru" style="font-size:1.1rem; padding:0.4rem 0.8rem; margin:0; text-align:left; flex-grow:1;" placeholder="Judul Kuis..." />
+      <input type="hidden" id="quiz-desc-input" value="Dibuat di QuizVibe Studio" />
+    </div>
+
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <label class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.85rem; cursor:pointer;">
+        📥 Impor JSON
+        <input type="file" accept=".json" onchange="importQuizJSON(event)" style="display:none;" />
+      </label>
+      <button type="button" class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.85rem;" onclick="exportQuizJSON()">
+        📤 Ekspor JSON
+      </button>
+      <button type="button" class="btn btn-primary" style="padding:0.4rem 1rem; font-size:0.9rem;" onclick="saveQuiz()">
+        💾 Simpan Kuis
+      </button>
+      <button type="button" class="btn btn-accent" style="padding:0.4rem 1.2rem; font-size:0.9rem;" onclick="playQuizNow()">
+        🎮 Host & Mainkan
+      </button>
+    </div>
+  </header>
+
+  <!-- Studio Body -->
+  <div class="studio-body">
+
+    <!-- Left Sidebar: Slide Thumbnails -->
+    <aside class="slides-sidebar">
+      <div style="font-weight:700; font-size:0.9rem; color:#a5b4fc; margin-bottom:0.75rem; text-transform:uppercase;">
+        Daftar Slide
+      </div>
+
+      <div id="slides-sidebar-list" style="flex-grow:1;">
+        <!-- Populated via JS -->
+      </div>
+
+      <!-- Add Slide Menu -->
+      <div style="padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
+        <div style="font-weight:700; font-size:0.85rem; color:#94a3b8; margin-bottom:0.5rem;">+ Tambah Slide Baru:</div>
+        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+          <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:0.5rem; font-size:0.85rem;" onclick="addSlide('quiz')">
+            🎯 Pilihan Ganda (Kahoot)
+          </button>
+          <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:0.5rem; font-size:0.85rem;" onclick="addSlide('true_false')">
+            ⚖️ Benar atau Salah
+          </button>
+          <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:0.5rem; font-size:0.85rem;" onclick="addSlide('poll')">
+            📊 Polling Opini (Menti)
+          </button>
+          <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:0.5rem; font-size:0.85rem;" onclick="addSlide('word_cloud')">
+            ☁️ Word Cloud (Menti)
+          </button>
+          <button type="button" class="btn btn-outline" style="justify-content:flex-start; padding:0.5rem; font-size:0.85rem;" onclick="addSlide('qa')">
+            💬 Tanya Jawab (Q&A)
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Main Slide Editor -->
+    <main class="editor-pane">
+      <div class="glass" style="padding:2.5rem; width:100%;" id="slide-editor-area">
+        <!-- Rendered dynamically -->
+      </div>
+    </main>
+
+    <!-- Right: Quizzes Library -->
+    <aside class="library-pane">
+      <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.75rem; color:#a5b4fc;">
+        📁 Kuis Tersimpan
+      </h3>
+      <div id="saved-quizzes-library">
+        <!-- Populated via JS -->
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="/js/creator.js"></script>
+</body>
+</html>

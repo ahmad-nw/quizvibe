@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pemain - QuizVibe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div class="player-screen">
+
+    <!-- 1. JOIN SCREEN -->
+    <div id="screen-join" class="glass" style="padding:2rem 1.5rem; text-align:center; margin:auto 0;">
+      <div style="font-size:2.5rem; margin-bottom:0.5rem;">⚡</div>
+      <h2 style="font-size:1.8rem; font-weight:800; margin-bottom:0.25rem;">Masuk ke Game</h2>
+      <p class="text-muted" style="font-size:0.9rem; margin-bottom:1.5rem;">Gabung sesi kuis & polling interaktif</p>
+
+      <div style="margin-bottom:1rem; text-align:left;">
+        <label style="font-weight:700; font-size:0.9rem; color:#a5b4fc; margin-bottom:0.4rem; display:block;">Game PIN:</label>
+        <input type="text" id="player-pin-input" class="pin-input" placeholder="000 000" maxlength="6" inputmode="numeric" />
+      </div>
+
+      <div style="margin-bottom:1rem; text-align:left;">
+        <label style="font-weight:700; font-size:0.9rem; color:#a5b4fc; margin-bottom:0.4rem; display:block;">Nama Panggilan (Nickname):</label>
+        <input type="text" id="player-name-input" class="pin-input" placeholder="Nama kamu..." maxlength="20" style="font-size:1.2rem; letter-spacing:0;" />
+      </div>
+
+      <div style="margin-bottom:1.5rem; text-align:left;">
+        <label style="font-weight:700; font-size:0.9rem; color:#a5b4fc; margin-bottom:0.4rem; display:block;">Pilih Karakter Avatar:</label>
+        <div class="avatar-grid" id="avatar-selector-grid"></div>
+      </div>
+
+      <button type="button" class="btn btn-accent btn-lg w-full" onclick="joinGame()">
+        Gabung Permainan 🚀
+      </button>
+    </div>
+
+    <!-- 2. WAITING IN LOBBY -->
+    <div id="screen-waiting-lobby" class="glass" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:3rem 1.5rem; text-align:center; margin:auto 0;">
+      <div id="lobby-player-avatar" style="font-size:5rem; margin-bottom:1rem; animation:popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">🦊</div>
+      <h2 id="lobby-player-name" style="font-size:2rem; font-weight:800; margin-bottom:0.5rem;">Pemain</h2>
+      <div class="brand-badge" style="margin-bottom:1.5rem;">Kamu Sudah Masuk!</div>
+
+      <p id="lobby-quiz-info" style="font-weight:700; color:#cbd5e1; margin-bottom:2rem;">Kuis Siap Dimulai</p>
+
+      <div style="display:flex; align-items:center; gap:0.5rem; color:#38bdf8;">
+        <span style="font-size:1.2rem; animation:spin 2s linear infinite;">⏳</span>
+        <span style="font-size:0.95rem; font-weight:600;">Menunggu host memulai game...</span>
+      </div>
+    </div>
+
+    <!-- 3. IN-GAME QUESTION VIEW -->
+    <div id="screen-game-active" style="display:none; flex-direction:column; justify-content:space-between; flex-grow:1;">
+      <!-- Header status bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <span id="player-slide-counter" style="font-weight:800; color:#a5b4fc;">1 / 10</span>
+        <span id="player-timer-badge" style="font-weight:800; font-size:1.1rem; color:#ef4444;">⏱️ 20s</span>
+      </div>
+
+      <div id="player-status-msg" style="text-align:center; font-weight:700; font-size:1.1rem; margin-bottom:1rem; color:#38bdf8;">
+        Pilih jawabanmu!
+      </div>
+
+      <!-- Option buttons / Input area -->
+      <div id="player-input-container" style="flex-grow:1; display:flex; flex-direction:column; justify-content:center;">
+      </div>
+    </div>
+
+    <!-- 4. FEEDBACK / REVEAL SCREEN -->
+    <div id="screen-feedback" style="display:none; flex-direction:column; justify-content:center; flex-grow:1; text-align:center;">
+      <div id="feedback-banner-box" class="feedback-banner feedback-correct">
+        <h2 id="feedback-title" style="font-size:1.8rem; font-weight:800; margin-bottom:0.5rem;">Jawaban Benar!</h2>
+        <div id="feedback-points-gain" style="font-size:2.4rem; font-weight:900;">+950 Poin</div>
+        <div id="feedback-streak" class="streak-badge" style="display:inline-block; margin-top:0.5rem; font-size:1rem;">🔥 2 Berturut-turut!</div>
+      </div>
+
+      <div class="glass" style="padding:1.5rem; margin-top:1rem;">
+        <div id="feedback-rank" style="font-size:1.2rem; font-weight:800; color:#38bdf8;">
+          Peringkat Kamu: #1
+        </div>
+        <p class="text-muted" style="font-size:0.9rem; margin-top:0.5rem;">
+          Lihat layar proyektor untuk melihat klasemen lengkap.
+        </p>
+      </div>
+    </div>
+
+    <!-- 5. FINAL / PODIUM SCREEN -->
+    <div id="screen-final" class="glass" style="display:none; flex-direction:column; align-items:center; justify-content:center; padding:3rem 1.5rem; text-align:center; margin:auto 0;">
+      <div style="font-size:4.5rem; margin-bottom:1rem;">🏆</div>
+      <h2 id="final-congrats" style="font-size:1.6rem; font-weight:800; margin-bottom:1.5rem;">Permainan Selesai!</h2>
+
+      <div style="background:rgba(255,255,255,0.06); padding:1.5rem; border-radius:16px; width:100%; margin-bottom:2rem;">
+        <div style="font-size:0.9rem; color:#94a3b8; text-transform:uppercase;">Peringkat Akhir</div>
+        <div id="final-rank-display" style="font-size:3.5rem; font-weight:900; color:#fbbf24;">#1</div>
+        <div id="final-score-display" style="font-size:1.3rem; font-weight:800; color:#38bdf8;">0 Poin</div>
+      </div>
+
+      <a href="/" class="btn btn-outline w-full">Kembali ke Beranda</a>
+    </div>
+
+  </div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <style>
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+  <!-- Scripts -->
+  <script src="/js/sound.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/player.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Presenter - QuizVibe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="host-container">
+
+  <!-- Header / Control Bar -->
+  <header class="host-header">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <a href="/" style="text-decoration:none; color:#fff; font-size:1.3rem; font-weight:800; display:flex; align-items:center; gap:0.4rem;">
+        <span>⚡</span> <span>QuizVibe</span>
+      </a>
+      <span style="color:var(--text-muted); font-size:0.9rem;">| Layar Presenter</span>
+    </div>
+
+    <div style="display:flex; gap:0.75rem; align-items:center;">
+      <button type="button" id="btn-mute" class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.85rem;" onclick="toggleMute()">
+        🔊 Audio Hidup
+      </button>
+      <button type="button" class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.85rem;" onclick="toggleFullscreen()">
+        ⛶ Layar Penuh
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Presenter Canvas -->
+  <main class="host-main">
+
+    <!-- 1. LOBBY SCREEN -->
+    <section id="screen-lobby" class="lobby-card glass">
+      <div style="font-size: 0.95rem; font-weight: 700; color: #a5b4fc; text-transform: uppercase; letter-spacing: 2px;">
+        Sesi Permainan Live
+      </div>
+      <h1 id="lobby-quiz-title" style="font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0 1.5rem 0;">
+        Menyiapkan Kuis...
+      </h1>
+
+      <div class="lobby-qr-container">
+        <!-- QR Code -->
+        <div style="text-align: center;">
+          <img id="lobby-qr-img" class="qr-code-img" alt="QR Code Join" src="" />
+          <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.5rem;">
+            Pindai kamera HP untuk masuk
+          </p>
+        </div>
+
+        <!-- PIN Display -->
+        <div class="pin-display-box">
+          <div class="pin-label">Game PIN</div>
+          <div class="pin-digits" id="display-pin">------</div>
+          <div style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem;">
+            Buka link: <strong id="join-url-text" style="color: #fff;">.../player.html</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Count & List -->
+      <div style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 750px; margin: 0 auto;">
+          <h3 id="player-count-display" style="font-size: 1.3rem; font-weight: 700;">
+            0 Peserta Siap
+          </h3>
+          <button type="button" id="btn-start-game" class="btn btn-accent btn-lg" onclick="startGame()">
+            Mulai Game (0 Pemain) 🚀
+          </button>
+        </div>
+
+        <div class="player-chips-container" id="lobby-players-container">
+          <p class="text-muted" style="margin: auto;">Menunggu peserta bergabung dengan PIN...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. QUESTION SCREEN -->
+    <section id="screen-question" style="display:none; flex-direction:column; align-items:center; width:100%; height:100%;">
+      <!-- Status bar -->
+      <div class="question-status-bar">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span id="question-progress" style="font-weight:800; font-size:1.1rem; color:#a5b4fc;">Slide 1 / 10</span>
+          <span id="slide-type-tag" class="brand-badge" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">Tipe</span>
+        </div>
+
+        <!-- Circular Countdown Timer -->
+        <div id="timer-display" class="timer-circle">20</div>
+
+        <!-- Answers count & Skip button -->
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <div class="answers-counter-badge">
+            <span>👥</span>
+            <span id="answered-counter-text">0 / 0 Sudah Menjawab</span>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:0.5rem 1rem;" onclick="skipTimer()">
+            Lewati ⏩
+          </button>
+        </div>
+      </div>
+
+      <!-- Question Banner -->
+      <div class="question-banner" id="question-text">
+        Pertanyaan sedang dimuat...
+      </div>
+
+      <!-- Options container (4 Kahoot buttons, True/False, or WordCloud prompt) -->
+      <div id="question-options-container" style="width:100%; max-width:1200px; flex-grow:1; display:flex;">
+      </div>
+    </section>
+
+    <!-- 3. RESULTS REVEAL SCREEN -->
+    <section id="screen-results" style="display:none; flex-direction:column; align-items:center; width:100%; height:100%;">
+      <h2 id="results-question-text" style="font-size:1.6rem; font-weight:800; margin-bottom:1.5rem; text-align:center;">
+        Hasil Respons
+      </h2>
+
+      <!-- Visual Area: Bar Chart or Word Cloud -->
+      <div id="results-chart-area" style="width:100%; max-width:1100px; flex-grow:1; display:flex; align-items:center; justify-content:center;">
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <button type="button" class="btn btn-primary btn-lg" onclick="showLeaderboardBtn()">
+          Lihat Peringkat Sementara (Leaderboard) 📊
+        </button>
+      </div>
+    </section>
+
+    <!-- 4. LEADERBOARD SCREEN -->
+    <section id="screen-leaderboard" class="leaderboard-card glass" style="display:none; flex-direction:column;">
+      <h2 style="font-size:2rem; font-weight:800; text-align:center; margin-bottom:0.5rem;">
+        Klasemen Teratas 🏆
+      </h2>
+      <p class="text-muted text-center" style="font-size:0.95rem;">
+        Pemain dengan poin tertinggi dan streak terbaik:
+      </p>
+
+      <div class="leaderboard-list" id="leaderboard-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div style="text-align:center; margin-top:1.5rem;">
+        <button type="button" id="btn-next-action" class="btn btn-accent btn-lg" onclick="nextSlideAction()">
+          Lanjut ke Soal Berikutnya ➡️
+        </button>
+      </div>
+    </section>
+
+    <!-- 5. FINAL PODIUM SCREEN -->
+    <section id="screen-podium" class="glass" style="display:none; flex-direction:column; align-items:center; width:100%; max-width:1000px; padding:2rem;">
+      <div style="font-size:1rem; font-weight:800; color:#fbbf24; text-transform:uppercase; letter-spacing:2px;">
+        Permainan Selesai
+      </div>
+      <h1 style="font-size:2.8rem; font-weight:900; margin:0.5rem 0 1.5rem 0; text-align:center;">
+        Pemenang Podium 🏆
+      </h1>
+
+      <!-- 3D Pedestal Container -->
+      <div class="podium-container">
+        <!-- 2nd Place (Silver) -->
+        <div class="podium-column" style="order:1;">
+          <div class="podium-avatar-box">
+            <span class="podium-avatar" id="podium-2-avatar">🥈</span>
+            <div class="podium-name" id="podium-2-name">-</div>
+            <div class="podium-pts" id="podium-2-score">0 pts</div>
+          </div>
+          <div class="podium-pedestal podium-2">2</div>
+        </div>
+
+        <!-- 1st Place (Gold) -->
+        <div class="podium-column" style="order:2;">
+          <div class="podium-avatar-box">
+            <span class="podium-avatar" id="podium-1-avatar">👑</span>
+            <div class="podium-name" id="podium-1-name" style="font-size:1.4rem; color:#fde047;">-</div>
+            <div class="podium-pts" id="podium-1-score" style="color:#fde047;">0 pts</div>
+          </div>
+          <div class="podium-pedestal podium-1">1</div>
+        </div>
+
+        <!-- 3rd Place (Bronze) -->
+        <div class="podium-column" style="order:3;">
+          <div class="podium-avatar-box">
+            <span class="podium-avatar" id="podium-3-avatar">🥉</span>
+            <div class="podium-name" id="podium-3-name">-</div>
+            <div class="podium-pts" id="podium-3-score">0 pts</div>
+          </div>
+          <div class="podium-pedestal podium-3">3</div>
+        </div>
+      </div>
+
+      <!-- Full rankings summary accordion / table -->
+      <div style="width:100%; max-width:650px; margin-top:2rem;">
+        <h3 style="font-size:1.1rem; margin-bottom:0.75rem;">Seluruh Hasil Peserta:</h3>
+        <div id="full-rankings-table" style="max-height:180px; overflow-y:auto; background:rgba(0,0,0,0.25); border-radius:12px; padding:0.5rem;">
+        </div>
+      </div>
+
+      <div style="display:flex; gap:1rem; margin-top:2rem;">
+        <a href="/" class="btn btn-outline">Kembali ke Beranda</a>
+        <button type="button" class="btn btn-primary" onclick="location.reload()">Main Lagi 🔄</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Scripts -->
+  <script src="/js/sound.js"></script>
+  <script src="/js/confetti.js"></script>
+  <script src="/js/wordcloud.js"></script>
+  <script src="/js/host.js"></script>
+</body>
+</html>
